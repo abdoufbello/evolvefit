@@ -50,6 +50,9 @@ services:
     image: httpd:alpine
     container_name: evolvefit-app
     restart: unless-stopped
+    volumes:
+      - ./index.html:/usr/local/apache2/htdocs/index.html:ro
+      - ./config.js:/usr/local/apache2/htdocs/config.js:ro
     networks:
       - evolvefit
     labels:
@@ -84,7 +87,7 @@ networks:
 ### 3.2 Testar o Site
 1. Abra seu navegador
 2. Acesse: `https://evolvefit.leplustudio.top`
-3. ✅ Deve aparecer a página padrão do Nginx
+3. ✅ Deve aparecer a aplicação EvolveFit personalizada
 
 ---
 

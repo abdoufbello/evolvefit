@@ -5,6 +5,9 @@ services:
     image: httpd:alpine
     container_name: evolvefit-app
     restart: unless-stopped
+    volumes:
+      - ./index.html:/usr/local/apache2/htdocs/index.html:ro
+      - ./config.js:/usr/local/apache2/htdocs/config.js:ro
     networks:
       - evolvefit
     labels:
