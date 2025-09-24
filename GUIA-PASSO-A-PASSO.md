@@ -38,15 +38,9 @@ docker network connect evolvefit NOME_DO_CONTAINER_TRAEFIK
 2. Clique no botão **"Add stack"**
 3. Em **"Name"**, digite: `evolvefit`
 
-### 2.3 Configurar a Stack (DEPLOY COM GITHUB)
-1. Em **"Build method"**, selecione **"Repository"**
-2. **Configure os campos:**
-   - **Repository URL:** `https://github.com/seu-usuario/EvolveFit`
-   - **Repository reference:** `refs/heads/main`
-   - **Compose path:** `portainer-stack-git.yml`
-
-### 2.4 Método Alternativo - Web Editor
-Se preferir usar o editor web, selecione **"Web editor"** e cole:
+### 2.3 Configurar a Stack (BUILD DO GITHUB)
+1. Em **"Build method"**, selecione **"Web editor"**
+2. **COPIE E COLE** o conteúdo abaixo na caixa de texto:
 
 ```yaml
 version: '3.8'
@@ -54,11 +48,12 @@ version: '3.8'
 services:
   evolvefit:
     build:
-      context: .
+      context: https://github.com/faisalill/EvolveFit.git
       dockerfile: Dockerfile
-    image: evolvefit:latest
     container_name: evolvefit-app
     restart: unless-stopped
+    volumes:
+      - evolvefit_data:/usr/local/apache2/htdocs
     networks:
       - evolvefit
     labels:
@@ -68,30 +63,21 @@ services:
       - "traefik.http.routers.evolvefit.tls=true"
       - "traefik.http.routers.evolvefit.tls.certresolver=leresolver"
       - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
-      - "traefik.http.routers.evolvefit-http.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit-http.entrypoints=web"
-      - "traefik.http.routers.evolvefit-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-    environment:
-      - NGINX_HOST=evolvefit.leplustudio.top
-      - NGINX_PORT=80
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - "traefik.http.routers.evolvefit.service=evolvefit"
+
+volumes:
+  evolvefit_data:
 
 networks:
   evolvefit:
     external: true
 ```
 
-**✅ Esta versão constrói a aplicação diretamente do GitHub!**
+**✅ Esta versão constrói a imagem diretamente do repositório GitHub!**
 
-### 2.5 Fazer o Deploy
+### 2.4 Fazer o Deploy
 1. Clique no botão **"Deploy the stack"**
-2. Aguarde alguns minutos (build do GitHub demora mais)
+2. Aguarde o build da imagem (pode demorar alguns minutos)
 3. ✅ **Sucesso!** Se tudo der certo, você verá a stack rodando
 
 ---
@@ -106,7 +92,16 @@ networks:
 ### 3.2 Testar o Site
 1. Abra seu navegador
 2. Acesse: `https://evolvefit.leplustudio.top`
-3. ✅ Deve aparecer a aplicação EvolveFit construída diretamente do GitHub
+3. ✅ Deve aparecer a aplicação EvolveFit completa construída do GitHub
+
+### 3.3 O que esperar
+Após o deploy bem-sucedido:
+- A imagem será construída diretamente do repositório GitHub
+- A aplicação EvolveFit estará totalmente funcional
+- Acessível via `https://evolvefit.leplustudio.top`
+- SSL configurado automaticamente pelo Traefik
+- Volume persistente para dados da aplicação
+- Atualizações automáticas quando o repositório for atualizado
 
 ---
 
