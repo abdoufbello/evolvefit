@@ -26,7 +26,7 @@ docker network connect evolvefit NOME_DO_CONTAINER_TRAEFIK
 
 ---
 
-## 🎯 **PASSO 2: Deploy no Portainer (3 OPÇÕES SIMPLES)**
+## 🎯 **PASSO 2: Deploy no Portainer (MÉTODO SIMPLES)**
 
 ### 2.1 Acessar Portainer
 1. Abra seu navegador
@@ -38,14 +38,9 @@ docker network connect evolvefit NOME_DO_CONTAINER_TRAEFIK
 2. Clique no botão **"Add stack"**
 3. Em **"Name"**, digite: `evolvefit`
 
-### 2.3 Escolher uma das 3 opções abaixo:
-
----
-
-## 🚀 **OPÇÃO A: Apache (MAIS SIMPLES - RECOMENDADO)**
-
+### 2.3 Configurar a Stack (VERSÃO ULTRA-SIMPLES)
 1. Em **"Build method"**, selecione **"Web editor"**
-2. **COPIE E COLE** o conteúdo abaixo:
+2. **COPIE E COLE** o conteúdo abaixo na caixa de texto:
 
 ```yaml
 version: '3.8'
@@ -58,167 +53,19 @@ services:
     networks:
       - evolvefit
     labels:
-      # Enable Traefik
       - "traefik.enable=true"
-      
-      # Router configuration
       - "traefik.http.routers.evolvefit.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit.entrypoints=websecure"
+      - "traefik.http.routers.evolvefit.entrypoints=web,websecure"
       - "traefik.http.routers.evolvefit.tls=true"
       - "traefik.http.routers.evolvefit.tls.certresolver=leresolver"
-      
-      # Service configuration
       - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
-      
-      # HTTP to HTTPS redirect
-      - "traefik.http.routers.evolvefit-http.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit-http.entrypoints=web"
-      - "traefik.http.routers.evolvefit-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
-      
-      # Security headers middleware
-      - "traefik.http.routers.evolvefit.middlewares=security-headers"
-      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
-      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
-      - "traefik.http.middlewares.security-headers.headers.customRequestHeaders.X-Forwarded-Proto=https"
-    
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 networks:
   evolvefit:
     external: true
 ```
 
----
-
-## 🐍 **OPÇÃO B: Python (ALTERNATIVA)**
-
-1. Em **"Build method"**, selecione **"Web editor"**
-2. **COPIE E COLE** o conteúdo abaixo:
-
-```yaml
-version: '3.8'
-
-services:
-  evolvefit:
-    image: python:3.11-alpine
-    container_name: evolvefit-app
-    restart: unless-stopped
-    working_dir: /app
-    command: python -m http.server 80
-    networks:
-      - evolvefit
-    labels:
-      # Enable Traefik
-      - "traefik.enable=true"
-      
-      # Router configuration
-      - "traefik.http.routers.evolvefit.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit.entrypoints=websecure"
-      - "traefik.http.routers.evolvefit.tls=true"
-      - "traefik.http.routers.evolvefit.tls.certresolver=leresolver"
-      
-      # Service configuration
-      - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
-      
-      # HTTP to HTTPS redirect
-      - "traefik.http.routers.evolvefit-http.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit-http.entrypoints=web"
-      - "traefik.http.routers.evolvefit-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
-      
-      # Security headers middleware
-      - "traefik.http.routers.evolvefit.middlewares=security-headers"
-      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
-      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
-      - "traefik.http.middlewares.security-headers.headers.customRequestHeaders.X-Forwarded-Proto=https"
-    
-    environment:
-      - PYTHONUNBUFFERED=1
-    
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-networks:
-  evolvefit:
-    external: true
-```
-
----
-
-## 🌐 **OPÇÃO C: Nginx (SE AS OUTRAS NÃO FUNCIONAREM)**
-
-1. Em **"Build method"**, selecione **"Web editor"**
-2. **COPIE E COLE** o conteúdo abaixo:
-
-```yaml
-version: '3.8'
-
-services:
-  evolvefit:
-    image: nginx:alpine
-    container_name: evolvefit-app
-    restart: unless-stopped
-    networks:
-      - evolvefit
-    labels:
-      # Enable Traefik
-      - "traefik.enable=true"
-      
-      # Router configuration
-      - "traefik.http.routers.evolvefit.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit.entrypoints=websecure"
-      - "traefik.http.routers.evolvefit.tls=true"
-      - "traefik.http.routers.evolvefit.tls.certresolver=leresolver"
-      
-      # Service configuration
-      - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
-      
-      # HTTP to HTTPS redirect
-      - "traefik.http.routers.evolvefit-http.rule=Host(`evolvefit.leplustudio.top`)"
-      - "traefik.http.routers.evolvefit-http.entrypoints=web"
-      - "traefik.http.routers.evolvefit-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
-      
-      # Security headers middleware
-      - "traefik.http.routers.evolvefit.middlewares=security-headers"
-      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
-      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
-      - "traefik.http.middlewares.security-headers.headers.customRequestHeaders.X-Forwarded-Proto=https"
-    
-    environment:
-      - NGINX_HOST=evolvefit.leplustudio.top
-      - NGINX_PORT=80
-    
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-networks:
-  evolvefit:
-    external: true
-```
+**✅ Esta versão é IDÊNTICA ao padrão das suas outras stacks (como RabbitMQ)!**
 
 ### 2.4 Fazer o Deploy
 1. Clique no botão **"Deploy the stack"**
