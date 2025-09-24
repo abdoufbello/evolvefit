@@ -3,7 +3,7 @@ version: '3.8'
 services:
   evolvefit:
     build:
-      context: https://github.com/faisalill/EvolveFit.git
+      context: https://github.com/abdoufbello/evolvefit.git
       dockerfile: Dockerfile
     container_name: evolvefit-app
     restart: unless-stopped
