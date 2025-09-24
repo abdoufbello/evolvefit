@@ -1,8 +1,8 @@
 # Usar imagem oficial do Nginx Alpine
 FROM nginx:alpine
 
-# Instalar curl para healthcheck
-RUN apk add --no-cache curl
+# Instalar wget para healthcheck (já incluído no nginx:alpine)
+RUN apk add --no-cache wget
 
 # Copiar arquivos da aplicação
 COPY index.html /usr/share/nginx/html/

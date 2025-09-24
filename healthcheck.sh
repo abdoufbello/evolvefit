@@ -4,7 +4,7 @@
 # Este script é executado pelo Docker healthcheck
 
 # Verificar se o Nginx está respondendo
-if curl -f http://localhost/health > /dev/null 2>&1; then
+if wget --no-verbose --tries=1 --spider http://localhost/ > /dev/null 2>&1; then
     echo "✅ EvolveFit está saudável"
     exit 0
 else
