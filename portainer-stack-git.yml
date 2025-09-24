@@ -1,17 +1,13 @@
-# Stack Configuration for Portainer
-# Copy this content when creating the stack in Portainer
-
 version: '3.8'
 
 services:
   evolvefit:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: evolvefit:latest
     container_name: evolvefit-app
     restart: unless-stopped
-    volumes:
-      - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./config.js:/usr/share/nginx/html/config.js:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - evolvefit
     labels:
@@ -47,7 +43,7 @@ services:
       - NGINX_PORT=80
     
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3

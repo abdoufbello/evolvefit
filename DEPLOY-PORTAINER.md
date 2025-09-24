@@ -12,16 +12,24 @@ Guia completo para deploy do EvolveFit usando Portainer com Traefik SSL.
 
 ## 🚀 Deploy via Portainer
 
-### 1. Acessar Portainer
-- Acesse sua instância do Portainer
-- Vá em **Stacks** → **Add Stack**
+### **Opção 1: Deploy com Git Repository (Recomendado)**
 
-### 2. Configurar Stack
-- **Name**: `evolvefit`
-- **Build method**: Repository
-- **Repository URL**: `https://github.com/seu-usuario/evolvefit`
-- **Compose path**: `docker-compose.portainer.yml`
-- **Automatic updates**: ✅ (opcional)
+1. Acesse seu Portainer: `https://portainer.seudominio.com`
+2. Vá em **Stacks** → **Add Stack**
+3. Nome da stack: `evolvefit`
+4. **Build method**: Repository
+5. **Repository URL**: `https://github.com/SEU-USUARIO/EvolveFit`
+6. **Compose path**: `portainer-stack-git.yml`
+7. **Deploy the stack**
+
+### **Opção 2: Deploy com Volumes (Alternativa)**
+
+1. Acesse seu Portainer: `https://portainer.seudominio.com`
+2. Vá em **Stacks** → **Add Stack**
+3. Nome da stack: `evolvefit`
+4. **Build method**: Web editor
+5. Cole o conteúdo do arquivo `docker-compose.portainer.yml`
+6. **Deploy the stack**
 
 ### 3. Variáveis de Ambiente (opcional)
 Se necessário, adicione as variáveis:
