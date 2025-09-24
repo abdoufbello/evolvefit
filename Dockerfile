@@ -7,7 +7,6 @@ RUN apk add --no-cache curl
 # Copiar arquivos da aplicação
 COPY index.html /usr/share/nginx/html/
 COPY config.js /usr/share/nginx/html/
-COPY test.html /usr/share/nginx/html/
 
 # Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
