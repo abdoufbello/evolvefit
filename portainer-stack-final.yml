@@ -7,8 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: evolvefit-app
     restart: unless-stopped
-    volumes:
-      - evolvefit_data:/usr/share/nginx/html
+    # Volumes removidos - arquivos são copiados pelo Dockerfile
+    # volumes:
+    #   - evolvefit_data:/usr/share/nginx/html
     networks:
       - evolvefit
     labels:
@@ -20,8 +21,8 @@ services:
       - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
       - "traefik.http.routers.evolvefit.service=evolvefit"
 
-volumes:
-  evolvefit_data:
+# volumes:
+#   evolvefit_data:
 
 networks:
   evolvefit:
