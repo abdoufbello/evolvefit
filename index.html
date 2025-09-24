@@ -916,7 +916,7 @@
             }
         }
 
-        function saveWorkoutDay(week, day) {
+        async function saveWorkoutDay(week, day) {
             if (!currentStudent) return;
             
             const weekPlan = currentStudent.workoutPlan.find(w => w.week === week);
