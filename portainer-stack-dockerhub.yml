@@ -8,13 +8,13 @@ services:
     networks:
       - evolvefit
     command: >
-      sh -c "rm -f /etc/nginx/conf.d/default.conf &&
+      sh -c "rm -rf /etc/nginx/conf.d/* &&
              wget -O /usr/share/nginx/html/index.html https://raw.githubusercontent.com/abdoufbello/evolvefit/main/index.html &&
              wget -O /usr/share/nginx/html/config.js https://raw.githubusercontent.com/abdoufbello/evolvefit/main/config.js &&
              wget -O /usr/share/nginx/html/test.html https://raw.githubusercontent.com/abdoufbello/evolvefit/main/test.html &&
-             wget -O /etc/nginx/nginx.conf https://raw.githubusercontent.com/abdoufbello/evolvefit/main/nginx.conf &&
-             nginx -t &&
-             nginx -g 'daemon off;'"
+             wget -O /tmp/nginx.conf https://raw.githubusercontent.com/abdoufbello/evolvefit/main/nginx.conf &&
+             nginx -t -c /tmp/nginx.conf &&
+             nginx -c /tmp/nginx.conf -g 'daemon off;'"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.evolvefit.rule=Host(`evolvefit.leplustudio.top`)"
