@@ -30,7 +30,7 @@ jobs:
       run: |
         docker run --rm -d --name evolvefit-test -p 8080:80 evolvefit:test
         sleep 10
-        curl -f http://localhost:8080/ || exit 1
+        curl -f http://localhost:8080/health || exit 1
         docker stop evolvefit-test
         
     - name: Login to Docker Hub (only on main branch)
