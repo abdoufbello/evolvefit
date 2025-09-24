@@ -1,12 +1,12 @@
 # Usar imagem oficial do Nginx Alpine
 FROM nginx:alpine
 
-# Instalar wget para healthcheck (já incluído no nginx:alpine)
+# Instalar wget para healthcheck
 RUN apk add --no-cache wget
 
 # Copiar arquivos da aplicação
-COPY index.html /usr/share/nginx/html/
-COPY config.js /usr/share/nginx/html/
+COPY index.html /usr/share/nginx/html/index.html
+COPY config.js /usr/share/nginx/html/config.js
 
 # Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
