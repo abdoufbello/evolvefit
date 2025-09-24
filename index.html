@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvolveFit - Personal Trainer Dashboard</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Configurações da aplicação -->
+    <script src="config.js"></script>
+    
+    <style>
+        :root {
+            --bg-primary: #1A202C;
+            --bg-secondary: #2D3748;
+            --accent-primary: #00F5A0;
+            --text-primary: #F7FAFC;
+            --text-secondary: #A0AEC0;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .bg-primary { background-color: var(--bg-primary); }
+        .bg-secondary { background-color: var(--bg-secondary); }
+        .text-primary { color: var(--text-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .accent-primary { color: var(--accent-primary); }
+        .bg-accent-primary { background-color: var(--accent-primary); }
+        
+        .view {
+            display: none;
+        }
+        
+        .view.active {
+            display: block;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 245, 160, 0.1);
+        }
+        
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #00d48a;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+        }
+        
+        .input-field {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--text-secondary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 245, 160, 0.1);
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body class="bg-primary min-h-screen">
+    <!-- Header -->
+    <header class="bg-secondary shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="logo font-poppins">E↑</div>
+                    <h1 class="text-2xl font-poppins font-bold text-primary">EvolveFit</h1>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <button onclick="showView('student-list-view')" class="nav-btn text-secondary hover:accent-primary transition-colors">Alunos</button>
+                    <button onclick="showView('student-form-view')" class="nav-btn text-secondary hover:accent-primary transition-colors">Novo Aluno</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        
+        <!-- Tela 1: Lista de Alunos -->
+        <div id="student-list-view" class="view active">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-poppins font-bold text-primary">Meus Alunos</h2>
+                <button onclick="showView('student-form-view')" class="btn-primary px-6 py-3 rounded-lg">
+                    + Adicionar Novo Aluno
+                </button>
+            </div>
+            
+            <div id="students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards de alunos serão inseridos aqui dinamicamente -->
+            </div>
+            
+            <div id="empty-state" class="text-center py-16 hidden">
+                <div class="text-6xl mb-4">🏋️‍♂️</div>
+                <h3 class="text-xl font-poppins font-semibold text-primary mb-2">Nenhum aluno cadastrado</h3>
+                <p class="text-secondary mb-6">Comece adicionando seu primeiro aluno para gerenciar treinos e acompanhar o progresso.</p>
+                <button onclick="showView('student-form-view')" class="btn-primary px-6 py-3 rounded-lg">
+                    Adicionar Primeiro Aluno
+                </button>
+            </div>
+        </div>
+
+        <!-- Tela 2: Formulário de Cadastro/Edição -->
+        <div id="student-form-view" class="view">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-poppins font-bold text-primary">Cadastro de Aluno</h2>
+                    <button onclick="showView('student-list-view')" class="btn-secondary px-4 py-2 rounded-lg">
+                        ← Voltar
+                    </button>
+                </div>
+                
+                <form id="student-form" class="space-y-8">
+                    <!-- Anamnese Completa -->
+                    <div class="bg-secondary p-6 rounded-lg">
+                        <h3 class="text-xl font-poppins font-semibold text-primary mb-6">Anamnese Completa</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Nome Completo</label>
+                                <input type="text" id="student-name" class="input-field w-full px-4 py-3 rounded-lg" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Objetivo</label>
+                                <select id="student-goal" class="input-field w-full px-4 py-3 rounded-lg" required>
+                                    <option value="">Selecione o objetivo</option>
+                                    <option value="Emagrecimento">Emagrecimento</option>
+                                    <option value="Ganho de Massa">Ganho de Massa</option>
+                                    <option value="Definição">Definição</option>
+                                    <option value="Força">Força</option>
+                                    <option value="Resistência">Resistência</option>
+                                    <option value="Reabilitação">Reabilitação</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Idade</label>
+                                <input type="number" id="student-age" class="input-field w-full px-4 py-3 rounded-lg" min="16" max="100" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Peso (kg)</label>
+                                <input type="number" id="student-weight" class="input-field w-full px-4 py-3 rounded-lg" min="30" max="300" step="0.1" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Altura (cm)</label>
+                                <input type="number" id="student-height" class="input-field w-full px-4 py-3 rounded-lg" min="140" max="220" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Histórico de Lesões</label>
+                                <textarea id="student-injuries" class="input-field w-full px-4 py-3 rounded-lg" rows="3" placeholder="Descreva lesões anteriores ou atuais..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Benchmark de Desempenho -->
+                    <div class="bg-secondary p-6 rounded-lg">
+                        <h3 class="text-xl font-poppins font-semibold text-primary mb-6">Benchmark de Desempenho</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Agachamento (kg)</label>
+                                <input type="number" id="benchmark-squat" class="input-field w-full px-4 py-3 rounded-lg" min="0" step="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Supino (kg)</label>
+                                <input type="number" id="benchmark-bench" class="input-field w-full px-4 py-3 rounded-lg" min="0" step="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Leg Press (kg)</label>
+                                <input type="number" id="benchmark-legpress" class="input-field w-full px-4 py-3 rounded-lg" min="0" step="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Deadlift (kg)</label>
+                                <input type="number" id="benchmark-deadlift" class="input-field w-full px-4 py-3 rounded-lg" min="0" step="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Pull-ups (reps)</label>
+                                <input type="number" id="benchmark-pullups" class="input-field w-full px-4 py-3 rounded-lg" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Push-ups (reps)</label>
+                                <input type="number" id="benchmark-pushups" class="input-field w-full px-4 py-3 rounded-lg" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalhes do Treino -->
+                    <div class="bg-secondary p-6 rounded-lg">
+                        <h3 class="text-xl font-poppins font-semibold text-primary mb-6">Detalhes do Treino</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Local de Treino</label>
+                                <select id="training-location" class="input-field w-full px-4 py-3 rounded-lg" required>
+                                    <option value="">Selecione o local</option>
+                                    <option value="Academia">Academia</option>
+                                    <option value="Box de CrossFit">Box de CrossFit</option>
+                                    <option value="Ar Livre">Ar Livre</option>
+                                    <option value="Em Casa">Em Casa</option>
+                                    <option value="Estúdio de Pilates">Estúdio de Pilates</option>
+                                    <option value="Parque">Parque</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-secondary mb-2">Modalidade Preferida</label>
+                                <select id="training-modality" class="input-field w-full px-4 py-3 rounded-lg" required>
+                                    <option value="">Selecione a modalidade</option>
+                                    <option value="Musculação">Musculação</option>
+                                    <option value="Calistenia">Calistenia</option>
+                                    <option value="LPO">LPO (Legs, Push, Pull)</option>
+                                    <option value="Ginástica">Ginástica</option>
+                                    <option value="Funcional">Funcional</option>
+                                    <option value="CrossFit">CrossFit</option>
+                                    <option value="Pilates">Pilates</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" onclick="showView('student-list-view')" class="btn-secondary px-6 py-3 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary px-6 py-3 rounded-lg">
+                            Salvar Aluno
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tela 3: Plano de Treino -->
+        <div id="workout-plan-view" class="view">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-poppins font-bold text-primary">Plano de Treino</h2>
+                    <p class="text-secondary mt-2">Aluno: <span id="workout-student-name" class="accent-primary font-semibold"></span></p>
+                </div>
+                <button onclick="showView('student-list-view')" class="btn-secondary px-4 py-2 rounded-lg">
+                    ← Voltar
+                </button>
+            </div>
+            
+            <div id="workout-plan-content" class="space-y-6">
+                <!-- Conteúdo do plano será inserido dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Tela 4: Visualização de Progresso -->
+        <div id="progress-view" class="view">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-poppins font-bold text-primary">Progresso do Aluno</h2>
+                    <p class="text-secondary mt-2">Aluno: <span id="progress-student-name" class="accent-primary font-semibold"></span></p>
+                </div>
+                <button onclick="showView('student-list-view')" class="btn-secondary px-4 py-2 rounded-lg">
+                    ← Voltar
+                </button>
+            </div>
+            
+            <div class="bg-secondary p-6 rounded-lg mb-6">
+                <label class="block text-sm font-medium text-secondary mb-2">Selecionar Exercício</label>
+                <select id="exercise-selector" class="input-field w-full md:w-1/3 px-4 py-3 rounded-lg" onchange="updateProgressChart()">
+                    <option value="">Escolha um exercício</option>
+                </select>
+            </div>
+            
+            <div class="bg-secondary p-6 rounded-lg">
+                <canvas id="progress-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Estado global da aplicação
+        let currentStudent = null;
+        let currentChart = null;
+        let syncInProgress = false;
+        
+        // Funções de integração com n8n
+        async function callLLMWebhook(prompt, studentData) {
+            try {
+                const response = await fetch(CONFIG.webhooks.llm, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        studentData: studentData,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Erro ao chamar LLM webhook:', error);
+                return null;
+            }
+        }
+        
+        async function syncWithNotion(studentData, action = 'create') {
+            if (syncInProgress) return;
+            
+            syncInProgress = true;
+            try {
+                const response = await fetch(CONFIG.webhooks.notion, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        data: studentData,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Sincronização com Notion realizada:', result);
+                return result;
+            } catch (error) {
+                console.error('Erro ao sincronizar com Notion:', error);
+                return null;
+            } finally {
+                syncInProgress = false;
+            }
+        }
+        
+        async function generateIntelligentWorkout(studentData) {
+            const prompt = `
+                Gere um plano de treino personalizado para:
+                - Nome: ${studentData.name}
+                - Objetivo: ${studentData.goal}
+                - Idade: ${studentData.age} anos
+                - Peso: ${studentData.weight}kg
+                - Altura: ${studentData.height}cm
+                - Local: ${studentData.training.location}
+                - Modalidade: ${studentData.training.modality}
+                - Lesões: ${studentData.injuries || 'Nenhuma'}
+                - Benchmarks: ${JSON.stringify(studentData.benchmark)}
+                
+                Retorne um JSON com exercícios específicos, séries, repetições e progressão.
+            `;
+            
+            return await callLLMWebhook(prompt, studentData);
+        }
+        
+        async function analyzeProgress(studentData) {
+            const prompt = `
+                Analise o progresso do aluno ${studentData.name}:
+                - Histórico de treinos: ${JSON.stringify(studentData.progress)}
+                - Objetivo: ${studentData.goal}
+                
+                Forneça insights sobre evolução, pontos de melhoria e recomendações.
+            `;
+            
+            return await callLLMWebhook(prompt, studentData);
+        }
+        
+        // Banco de dados de exercícios
+        const exerciseDatabase = {
+            peito: [
+                'Supino Reto', 'Supino Inclinado', 'Supino Declinado', 'Crucifixo', 
+                'Flexão de Braço', 'Paralelas', 'Crossover', 'Peck Deck'
+            ],
+            costas: [
+                'Puxada Frontal', 'Remada Curvada', 'Remada Sentada', 'Pull-up', 
+                'Chin-up', 'Deadlift', 'Remada Unilateral', 'Pullover'
+            ],
+            pernas: [
+                'Agachamento', 'Leg Press', 'Extensão de Pernas', 'Flexão de Pernas',
+                'Stiff', 'Afundo', 'Panturrilha em Pé', 'Panturrilha Sentada'
+            ],
+            ombros: [
+                'Desenvolvimento', 'Elevação Lateral', 'Elevação Frontal', 'Elevação Posterior',
+                'Encolhimento', 'Desenvolvimento Arnold', 'Face Pull'
+            ],
+            bracos: [
+                'Rosca Direta', 'Rosca Martelo', 'Tríceps Testa', 'Tríceps Pulley',
+                'Rosca Concentrada', 'Tríceps Francês', 'Rosca 21'
+            ],
+            funcional: [
+                'Burpee', 'Mountain Climber', 'Prancha', 'Agachamento Jump',
+                'Flexão Diamante', 'Bear Crawl', 'Jump Squat', 'High Knees'
+            ]
+        };
+
+        // Inicialização da aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStudents();
+            
+            // Event listener para o formulário
+            document.getElementById('student-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveStudent();
+            });
+        });
+
+        // Navegação entre views
+        function showView(viewId) {
+            // Esconder todas as views
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Mostrar a view selecionada
+            document.getElementById(viewId).classList.add('active');
+            
+            // Ações específicas por view
+            if (viewId === 'student-list-view') {
+                loadStudents();
+            }
+        }
+
+        // Gerenciamento de alunos
+        function loadStudents() {
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            const studentsGrid = document.getElementById('students-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (students.length === 0) {
+                studentsGrid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                studentsGrid.innerHTML = students.map(student => createStudentCard(student)).join('');
+            }
+        }
+
+        function createStudentCard(student) {
+            const bmi = (student.weight / Math.pow(student.height / 100, 2)).toFixed(1);
+            
+            return `
+                <div class="bg-secondary p-6 rounded-lg card-hover">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-poppins font-semibold text-primary">${student.name}</h3>
+                            <p class="text-secondary">${student.goal}</p>
+                        </div>
+                        <div class="text-right text-sm text-secondary">
+                            <p>${student.age} anos</p>
+                            <p>${student.weight}kg</p>
+                            <p>IMC: ${bmi}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="viewWorkoutPlan('${student.id}')" class="btn-primary px-3 py-1 text-sm rounded">
+                            Ver Plano
+                        </button>
+                        <button onclick="viewProgress('${student.id}')" class="btn-secondary px-3 py-1 text-sm rounded">
+                            Progresso
+                        </button>
+                        <button onclick="deleteStudent('${student.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm rounded transition-colors">
+                            Excluir
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveStudent() {
+            const formData = {
+                id: Date.now().toString(),
+                name: document.getElementById('student-name').value,
+                goal: document.getElementById('student-goal').value,
+                age: parseInt(document.getElementById('student-age').value),
+                weight: parseFloat(document.getElementById('student-weight').value),
+                height: parseInt(document.getElementById('student-height').value),
+                injuries: document.getElementById('student-injuries').value,
+                benchmark: {
+                    squat: parseFloat(document.getElementById('benchmark-squat').value) || 0,
+                    bench: parseFloat(document.getElementById('benchmark-bench').value) || 0,
+                    legpress: parseFloat(document.getElementById('benchmark-legpress').value) || 0,
+                    deadlift: parseFloat(document.getElementById('benchmark-deadlift').value) || 0,
+                    pullups: parseInt(document.getElementById('benchmark-pullups').value) || 0,
+                    pushups: parseInt(document.getElementById('benchmark-pushups').value) || 0
+                },
+                training: {
+                    location: document.getElementById('training-location').value,
+                    modality: document.getElementById('training-modality').value
+                },
+                workoutPlan: generateWorkoutPlan(),
+                progress: []
+            };
+            
+            // Tentar gerar plano inteligente com LLM
+            const intelligentPlan = await generateIntelligentWorkout(formData);
+            if (intelligentPlan && intelligentPlan.workoutPlan) {
+                formData.workoutPlan = intelligentPlan.workoutPlan;
+                formData.llmGenerated = true;
+            }
+
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            students.push(formData);
+            localStorage.setItem('evolvefit_students', JSON.stringify(students));
+            
+            // Sincronizar com Notion
+            await syncWithNotion(formData, 'create');
+            
+            // Reset form e voltar para lista
+            document.getElementById('student-form').reset();
+            showView('student-list-view');
+        }
+
+        async function deleteStudent(studentId) {
+            if (confirm('Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.')) {
+                const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+                const studentToDelete = students.find(s => s.id === studentId);
+                const updatedStudents = students.filter(student => student.id !== studentId);
+                localStorage.setItem('evolvefit_students', JSON.stringify(updatedStudents));
+                
+                // Sincronizar exclusão com Notion
+                if (studentToDelete) {
+                    await syncWithNotion(studentToDelete, 'delete');
+                }
+                
+                loadStudents();
+            }
+        }
+
+        // Geração do plano de treino
+        function generateWorkoutPlan() {
+            const plan = [];
+            const cyclePattern = [true, true, true, false, true, true, false]; // 3ON-1OFF-2ON-1OFF
+            
+            for (let week = 1; week <= 4; week++) {
+                const weekPlan = { week: week, days: [] };
+                
+                for (let day = 1; day <= 7; day++) {
+                    const isTrainingDay = cyclePattern[((week - 1) * 7 + day - 1) % 7];
+                    
+                    if (isTrainingDay) {
+                        const dayPlan = generateDayWorkout(day % 3); // Rotação A, B, C
+                        weekPlan.days.push({
+                            day: day,
+                            type: 'treino',
+                            exercises: dayPlan
+                        });
+                    } else {
+                        weekPlan.days.push({
+                            day: day,
+                            type: day % 7 === 4 ? 'descanso_ativo' : 'descanso',
+                            exercises: []
+                        });
+                    }
+                }
+                
+                plan.push(weekPlan);
+            }
+            
+            return plan;
+        }
+
+        function generateDayWorkout(type) {
+            const workouts = {
+                0: { // Treino A - Peito, Ombros, Tríceps
+                    focus: 'Peito, Ombros e Tríceps',
+                    exercises: [
+                        ...exerciseDatabase.peito.slice(0, 3),
+                        ...exerciseDatabase.ombros.slice(0, 2),
+                        ...exerciseDatabase.bracos.slice(3, 5)
+                    ]
+                },
+                1: { // Treino B - Costas, Bíceps
+                    focus: 'Costas e Bíceps',
+                    exercises: [
+                        ...exerciseDatabase.costas.slice(0, 4),
+                        ...exerciseDatabase.bracos.slice(0, 3)
+                    ]
+                },
+                2: { // Treino C - Pernas
+                    focus: 'Pernas Completo',
+                    exercises: exerciseDatabase.pernas.slice(0, 6)
+                }
+            };
+
+            const workout = workouts[type];
+            return workout.exercises.map(exercise => ({
+                name: exercise,
+                sets: 3,
+                reps: '8-12',
+                weight: 0,
+                completed: false
+            }));
+        }
+
+        // Visualização do plano de treino
+        function viewWorkoutPlan(studentId) {
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            const student = students.find(s => s.id === studentId);
+            
+            if (!student) return;
+            
+            currentStudent = student;
+            document.getElementById('workout-student-name').textContent = student.name;
+            
+            const planContent = document.getElementById('workout-plan-content');
+            planContent.innerHTML = student.workoutPlan.map(week => createWeekPlan(week)).join('');
+            
+            showView('workout-plan-view');
+        }
+
+        function createWeekPlan(week) {
+            return `
+                <div class="bg-secondary p-6 rounded-lg">
+                    <h3 class="text-xl font-poppins font-semibold text-primary mb-4">Semana ${week.week}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${week.days.map(day => createDayPlan(day, week.week)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function createDayPlan(day, weekNum) {
+            if (day.type === 'descanso') {
+                return `
+                    <div class="bg-gray-700 p-4 rounded-lg text-center">
+                        <h4 class="font-semibold text-gray-300">Dia ${day.day}</h4>
+                        <p class="text-gray-400">Descanso</p>
+                    </div>
+                `;
+            }
+            
+            if (day.type === 'descanso_ativo') {
+                return `
+                    <div class="bg-blue-900 p-4 rounded-lg text-center">
+                        <h4 class="font-semibold text-blue-200">Dia ${day.day}</h4>
+                        <p class="text-blue-300">Descanso Ativo</p>
+                        <p class="text-xs text-blue-400 mt-1">Caminhada leve ou alongamento</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h4 class="font-semibold text-primary mb-2">Dia ${day.day} - Treino</h4>
+                    <div class="space-y-2">
+                        ${day.exercises.map((exercise, index) => `
+                            <div class="text-sm">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-secondary">${exercise.name}</span>
+                                </div>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" placeholder="kg" class="input-field w-16 px-2 py-1 text-xs rounded" 
+                                           onchange="updateExerciseWeight(${weekNum}, ${day.day}, ${index}, this.value)">
+                                    <input type="number" placeholder="reps" class="input-field w-16 px-2 py-1 text-xs rounded"
+                                           onchange="updateExerciseReps(${weekNum}, ${day.day}, ${index}, this.value)">
+                                </div>
+                            </div>
+                        `).join('')}
+                        <button onclick="saveWorkoutDay(${weekNum}, ${day.day})" class="btn-primary w-full py-2 text-xs rounded mt-2">
+                            Salvar Treino do Dia
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateExerciseWeight(week, day, exerciseIndex, weight) {
+            // Atualizar o peso do exercício no plano atual
+            if (currentStudent && currentStudent.workoutPlan) {
+                const weekPlan = currentStudent.workoutPlan.find(w => w.week === week);
+                if (weekPlan) {
+                    const dayPlan = weekPlan.days.find(d => d.day === day);
+                    if (dayPlan && dayPlan.exercises[exerciseIndex]) {
+                        dayPlan.exercises[exerciseIndex].weight = parseFloat(weight) || 0;
+                    }
+                }
+            }
+        }
+
+        function updateExerciseReps(week, day, exerciseIndex, reps) {
+            // Atualizar as repetições do exercício no plano atual
+            if (currentStudent && currentStudent.workoutPlan) {
+                const weekPlan = currentStudent.workoutPlan.find(w => w.week === week);
+                if (weekPlan) {
+                    const dayPlan = weekPlan.days.find(d => d.day === day);
+                    if (dayPlan && dayPlan.exercises[exerciseIndex]) {
+                        dayPlan.exercises[exerciseIndex].actualReps = parseInt(reps) || 0;
+                    }
+                }
+            }
+        }
+
+        function saveWorkoutDay(week, day) {
+            if (!currentStudent) return;
+            
+            const weekPlan = currentStudent.workoutPlan.find(w => w.week === week);
+            if (!weekPlan) return;
+            
+            const dayPlan = weekPlan.days.find(d => d.day === day);
+            if (!dayPlan) return;
+            
+            // Salvar progresso para cada exercício do dia
+            const today = new Date().toISOString().split('T')[0];
+            
+            dayPlan.exercises.forEach(exercise => {
+                if (exercise.weight > 0) {
+                    currentStudent.progress.push({
+                        date: today,
+                        exercise: exercise.name,
+                        weight: exercise.weight,
+                        reps: exercise.actualReps || 0,
+                        week: week,
+                        day: day
+                    });
+                }
+            });
+            
+            // Atualizar no localStorage
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            const studentIndex = students.findIndex(s => s.id === currentStudent.id);
+            if (studentIndex !== -1) {
+                students[studentIndex] = currentStudent;
+                localStorage.setItem('evolvefit_students', JSON.stringify(students));
+                
+                // Sincronizar progresso com Notion
+                syncWithNotion(currentStudent, 'update');
+            }
+            
+            alert('Treino do dia salvo com sucesso!');
+            
+            // Analisar progresso com LLM (opcional)
+            if (currentStudent.progress.length > 5) {
+                analyzeProgress(currentStudent).then(analysis => {
+                    if (analysis && analysis.insights) {
+                        console.log('Análise de progresso:', analysis.insights);
+                    }
+                });
+            }
+        }
+
+        // Visualização de progresso
+        function viewProgress(studentId) {
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            const student = students.find(s => s.id === studentId);
+            
+            if (!student) return;
+            
+            currentStudent = student;
+            document.getElementById('progress-student-name').textContent = student.name;
+            
+            // Popular dropdown de exercícios
+            const exerciseSelector = document.getElementById('exercise-selector');
+            const allExercises = [...new Set(student.progress.map(p => p.exercise))];
+            
+            exerciseSelector.innerHTML = '<option value="">Escolha um exercício</option>' +
+                allExercises.map(exercise => `<option value="${exercise}">${exercise}</option>`).join('');
+            
+            showView('progress-view');
+        }
+
+        function updateProgressChart() {
+            const exerciseName = document.getElementById('exercise-selector').value;
+            if (!exerciseName || !currentStudent) return;
+            
+            const exerciseData = currentStudent.progress
+                .filter(p => p.exercise === exerciseName)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (exerciseData.length === 0) return;
+            
+            const ctx = document.getElementById('progress-chart').getContext('2d');
+            
+            // Destruir gráfico anterior se existir
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: exerciseData.map(d => new Date(d.date).toLocaleDateString('pt-BR')),
+                    datasets: [{
+                        label: 'Carga (kg)',
+                        data: exerciseData.map(d => d.weight),
+                        borderColor: '#00F5A0',
+                        backgroundColor: 'rgba(0, 245, 160, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Evolução - ${exerciseName}`,
+                            color: '#F7FAFC',
+                            font: {
+                                size: 16,
+                                family: 'Poppins'
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: '#F7FAFC'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#A0AEC0'
+                            },
+                            grid: {
+                                color: 'rgba(160, 174, 192, 0.2)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#A0AEC0'
+                            },
+                            grid: {
+                                color: 'rgba(160, 174, 192, 0.2)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
