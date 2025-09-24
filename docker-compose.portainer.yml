@@ -6,7 +6,7 @@ services:
     container_name: evolvefit-app
     restart: unless-stopped
     networks:
-      - traefik
+      - evolvefit
     labels:
       # Habilitar Traefik
       - "traefik.enable=true"
@@ -37,13 +37,13 @@ services:
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
     
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
 networks:
-  traefik:
+  evolvefit:
     external: true
-    name: traefik
+    name: evolvefit

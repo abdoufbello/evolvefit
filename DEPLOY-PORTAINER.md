@@ -6,7 +6,7 @@ Guia completo para deploy do EvolveFit usando Portainer com Traefik SSL.
 
 - ✅ Portainer instalado e funcionando
 - ✅ Traefik configurado com SSL (Let's Encrypt)
-- ✅ Network `traefik` criada no Docker
+- ✅ Network `evolvefit` criada no Docker
 - ✅ Domínio `evolvefit.leplustudio.top` apontando para seu servidor
 - ✅ n8n configurado com webhooks
 
@@ -38,14 +38,14 @@ APP_DOMAIN=evolvefit.leplustudio.top
 ## 🔧 Configuração Traefik
 
 ### Verificar Network
-Certifique-se que a network `traefik` existe:
+Certifique-se que a network `evolvefit` existe:
 ```bash
-docker network ls | grep traefik
+docker network ls | grep evolvefit
 ```
 
 Se não existir, crie:
 ```bash
-docker network create traefik
+docker network create evolvefit
 ```
 
 ### Configuração do Traefik
