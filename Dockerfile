@@ -11,6 +11,9 @@ COPY config.js /usr/share/nginx/html/
 # Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Remover configuração padrão que pode conflitar
+RUN rm -f /etc/nginx/conf.d/default.conf
+
 # Copiar script de healthcheck
 COPY healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
