@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EvolveFit - Personal Trainer Dashboard</title>
+    <title>EvolveFit - Personal Trainer Digital</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,10 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Chart.js CDN -->
+    <!-- Chart.js para gráficos de progresso -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Configurações da aplicação -->
+    <!-- Configurações dos webhooks n8n -->
     <script src="config.js"></script>
     
     <style>
@@ -322,47 +322,35 @@
         let currentChart = null;
         let syncInProgress = false;
         
-        // Funções de integração com n8n
-        async function callLLMWebhook(prompt, studentData) {
-            try {
-                const response = await fetch(CONFIG.webhooks.llm, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        prompt: prompt,
-                        studentData: studentData,
-                        timestamp: new Date().toISOString()
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Erro ao chamar LLM webhook:', error);
+        // Funções de integração com n8n aprimoradas
+        async function callLLMWebhook(prompt, studentData, type = 'general') {
+            if (!CONFIG || !validateConfig()) {
+                console.error('Configuração de webhooks não encontrada ou inválida');
                 return null;
             }
-        }
-        
-        async function syncWithNotion(studentData, action = 'create') {
-            if (syncInProgress) return;
             
-            syncInProgress = true;
+            // Mostrar feedback visual
+            showNotification(CONFIG.messages.llm.generating, 'info');
+            
             try {
-                const response = await fetch(CONFIG.webhooks.notion, {
+                const payload = {
+                    type: type,
+                    prompt: CONFIG.llm.prompts[type] || prompt,
+                    studentData: studentData,
+                    timestamp: new Date().toISOString(),
+                    config: {
+                        model: CONFIG.llm.model,
+                        maxTokens: CONFIG.llm.maxTokens,
+                        temperature: CONFIG.llm.temperature
+                    }
+                };
+                
+                const response = await fetchWithRetry(CONFIG.webhooks.llm, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        action: action,
-                        data: studentData,
-                        timestamp: new Date().toISOString()
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
                 if (!response.ok) {
@@ -370,45 +358,234 @@
                 }
                 
                 const result = await response.json();
-                console.log('Sincronização com Notion realizada:', result);
+                
+                if (CONFIG.environment.enableLogs) {
+                    console.log('✅ LLM Response:', result);
+                }
+                
+                showNotification(CONFIG.messages.llm.success, 'success');
                 return result;
+                
             } catch (error) {
-                console.error('Erro ao sincronizar com Notion:', error);
+                console.error('❌ Erro ao chamar LLM webhook:', error);
+                showNotification(CONFIG.messages.llm.error, 'error');
+                return null;
+            }
+        }
+        
+        async function syncWithNotion(studentData, action = 'create') {
+            if (syncInProgress) return;
+            if (!CONFIG || !validateConfig()) {
+                console.error('Configuração de webhooks não encontrada ou inválida');
+                return null;
+            }
+            
+            syncInProgress = true;
+            showNotification(CONFIG.messages.notion.syncing, 'info');
+            
+            try {
+                const payload = {
+                    action: action,
+                    data: transformDataForNotion(studentData, action),
+                    timestamp: new Date().toISOString(),
+                    schema: action === 'progress' ? CONFIG.notion.progressSchema : CONFIG.notion.studentSchema
+                };
+                
+                const response = await fetchWithRetry(CONFIG.webhooks.notion, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (CONFIG.environment.enableLogs) {
+                    console.log('✅ Notion Sync:', result);
+                }
+                
+                showNotification(CONFIG.messages.notion.success, 'success');
+                return result;
+                
+            } catch (error) {
+                console.error('❌ Erro ao sincronizar com Notion:', error);
+                showNotification(CONFIG.messages.notion.error, 'warning');
                 return null;
             } finally {
                 syncInProgress = false;
             }
         }
         
-        async function generateIntelligentWorkout(studentData) {
-            const prompt = `
-                Gere um plano de treino personalizado para:
-                - Nome: ${studentData.name}
-                - Objetivo: ${studentData.goal}
-                - Idade: ${studentData.age} anos
-                - Peso: ${studentData.weight}kg
-                - Altura: ${studentData.height}cm
-                - Local: ${studentData.training.location}
-                - Modalidade: ${studentData.training.modality}
-                - Lesões: ${studentData.injuries || 'Nenhuma'}
-                - Benchmarks: ${JSON.stringify(studentData.benchmark)}
-                
-                Retorne um JSON com exercícios específicos, séries, repetições e progressão.
+        // Função auxiliar para retry de requisições
+        async function fetchWithRetry(url, options, attempts = CONFIG.api.retryAttempts) {
+            for (let i = 0; i < attempts; i++) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), CONFIG.api.timeout);
+                    
+                    const response = await fetch(url, {
+                        ...options,
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    return response;
+                    
+                } catch (error) {
+                    if (i === attempts - 1) throw error;
+                    
+                    console.warn(`Tentativa ${i + 1} falhou, tentando novamente em ${CONFIG.api.retryDelay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, CONFIG.api.retryDelay));
+                }
+            }
+        }
+        
+        // Função para transformar dados para o formato do Notion
+        function transformDataForNotion(data, action) {
+            if (action === 'progress') {
+                return {
+                    studentName: data.name,
+                    date: new Date().toISOString().split('T')[0],
+                    exercises: data.progress || [],
+                    lastUpdate: new Date().toISOString()
+                };
+            }
+            
+            return {
+                name: data.name,
+                goal: data.goal,
+                age: data.age,
+                weight: data.weight,
+                height: data.height,
+                injuries: data.injuries || '',
+                trainingLocation: data.training?.location || '',
+                trainingModality: data.training?.modality || '',
+                createdAt: new Date().toISOString(),
+                lastUpdate: new Date().toISOString(),
+                benchmark: data.benchmark || {}
+            };
+        }
+        
+        // Sistema de notificações
+        function showNotification(message, type = 'info') {
+            if (!CONFIG.environment.enableNotifications) return;
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300 ${getNotificationClass(type)}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        function getNotificationClass(type) {
+            const classes = {
+                success: 'bg-green-600 text-white',
+                error: 'bg-red-600 text-white',
+                warning: 'bg-yellow-600 text-white',
+                info: 'bg-blue-600 text-white'
+            };
+            return classes[type] || classes.info;
+        }
+        
+        // Função para exibir insights de progresso
+        function showProgressInsights(analysis) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-secondary p-6 rounded-lg max-w-md w-full mx-4">
+                    <h3 class="text-xl font-poppins font-semibold text-primary mb-4">📊 Análise de Progresso</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-semibold text-accent-primary">Insights:</h4>
+                            <p class="text-secondary text-sm">${analysis.insights}</p>
+                        </div>
+                        ${analysis.recommendations ? `
+                        <div>
+                            <h4 class="font-semibold text-accent-primary">Recomendações:</h4>
+                            <ul class="text-secondary text-sm list-disc list-inside">
+                                ${analysis.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                        ${analysis.nextGoals ? `
+                        <div>
+                            <h4 class="font-semibold text-accent-primary">Próximos Objetivos:</h4>
+                            <ul class="text-secondary text-sm list-disc list-inside">
+                                ${analysis.nextGoals.map(goal => `<li>${goal}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="btn-primary w-full mt-4 py-2 rounded">
+                        Entendi
+                    </button>
+                </div>
             `;
             
-            return await callLLMWebhook(prompt, studentData);
+            document.body.appendChild(modal);
+        }
+        
+        // Função para sincronização em lote (útil para recuperação de dados)
+        async function batchSyncWithNotion() {
+            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+            
+            if (students.length === 0) {
+                showNotification('Nenhum aluno para sincronizar', 'info');
+                return;
+            }
+            
+            showNotification(`Sincronizando ${students.length} alunos...`, 'info');
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const student of students) {
+                try {
+                    await syncWithNotion(student, 'create');
+                    successCount++;
+                } catch (error) {
+                    errorCount++;
+                    console.error(`Erro ao sincronizar aluno ${student.name}:`, error);
+                }
+                
+                // Pequena pausa entre sincronizações
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            showNotification(
+                `Sincronização concluída: ${successCount} sucessos, ${errorCount} erros`,
+                errorCount > 0 ? 'warning' : 'success'
+            );
+        }
+        
+        async function generateIntelligentWorkout(studentData) {
+            const result = await callLLMWebhook('', studentData, 'workoutGeneration');
+            return result;
         }
         
         async function analyzeProgress(studentData) {
-            const prompt = `
-                Analise o progresso do aluno ${studentData.name}:
-                - Histórico de treinos: ${JSON.stringify(studentData.progress)}
-                - Objetivo: ${studentData.goal}
-                
-                Forneça insights sobre evolução, pontos de melhoria e recomendações.
-            `;
-            
-            return await callLLMWebhook(prompt, studentData);
+            const result = await callLLMWebhook('', studentData, 'progressAnalysis');
+            return result;
+        }
+        
+        async function getNutritionAdvice(studentData) {
+            const result = await callLLMWebhook('', studentData, 'nutritionAdvice');
+            return result;
         }
         
         // Banco de dados de exercícios
@@ -543,13 +720,15 @@
             if (intelligentPlan && intelligentPlan.workoutPlan) {
                 formData.workoutPlan = intelligentPlan.workoutPlan;
                 formData.llmGenerated = true;
+                formData.llmRecommendations = intelligentPlan.recommendations;
+                formData.progressionPlan = intelligentPlan.progressionPlan;
             }
 
             const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
             students.push(formData);
             localStorage.setItem('evolvefit_students', JSON.stringify(students));
             
-            // Sincronizar com Notion
+            // Sincronizar com Notion (criar novo aluno)
             await syncWithNotion(formData, 'create');
             
             // Reset form e voltar para lista
@@ -566,7 +745,7 @@
                 
                 // Sincronizar exclusão com Notion
                 if (studentToDelete) {
-                    await syncWithNotion(studentToDelete, 'delete');
+                    await syncWithNotion({...studentToDelete, id: studentId}, 'delete');
                 }
                 
                 loadStudents();
@@ -770,7 +949,7 @@
                 localStorage.setItem('evolvefit_students', JSON.stringify(students));
                 
                 // Sincronizar progresso com Notion
-                syncWithNotion(currentStudent, 'update');
+                await syncWithNotion(currentStudent, 'progress');
             }
             
             alert('Treino do dia salvo com sucesso!');
@@ -779,7 +958,12 @@
             if (currentStudent.progress.length > 5) {
                 analyzeProgress(currentStudent).then(analysis => {
                     if (analysis && analysis.insights) {
-                        console.log('Análise de progresso:', analysis.insights);
+                        console.log('📊 Análise de progresso:', analysis.insights);
+                        
+                        // Mostrar insights para o usuário
+                        if (analysis.recommendations && analysis.recommendations.length > 0) {
+                            showProgressInsights(analysis);
+                        }
                     }
                 });
             }
