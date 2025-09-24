@@ -22,8 +22,8 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - traefik
+      - evolvefit
 
 networks:
-  traefik:
-    external: true
+  evolvefit:
+    driver: bridge
