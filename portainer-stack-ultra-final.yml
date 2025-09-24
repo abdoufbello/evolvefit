@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  evolvefit:
+    build:
+      context: https://github.com/abdoufbello/evolvefit.git
+      dockerfile: Dockerfile
+    container_name: evolvefit-app
+    restart: unless-stopped
+    networks:
+      - evolvefit
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.evolvefit.rule=Host(`evolvefit.leplustudio.top`)"
+      - "traefik.http.routers.evolvefit.entrypoints=websecure"
+      - "traefik.http.routers.evolvefit.tls=true"
+      - "traefik.http.routers.evolvefit.tls.certresolver=leresolver"
+      - "traefik.http.services.evolvefit.loadbalancer.server.port=80"
+      - "traefik.http.routers.evolvefit.service=evolvefit"
+
+networks:
+  evolvefit:
+    external: true
