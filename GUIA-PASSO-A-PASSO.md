@@ -51,8 +51,7 @@ services:
     container_name: evolvefit-app
     restart: unless-stopped
     volumes:
-      - ./index.html:/usr/local/apache2/htdocs/index.html:ro
-      - ./config.js:/usr/local/apache2/htdocs/config.js:ro
+      - .:/usr/local/apache2/htdocs:ro
     networks:
       - evolvefit
     labels:
