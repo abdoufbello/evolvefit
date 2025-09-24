@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Script de verificação de saúde para o container EvolveFit
+# Este script é executado pelo Docker healthcheck
+
+# Verificar se o Nginx está respondendo
+if curl -f http://localhost/health > /dev/null 2>&1; then
+    echo "✅ EvolveFit está saudável"
+    exit 0
+else
+    echo "❌ EvolveFit não está respondendo"
+    exit 1
+fi

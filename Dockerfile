@@ -1,13 +1,26 @@
+# Usar imagem oficial do Nginx Alpine
 FROM nginx:alpine
 
-# Copiar o arquivo HTML para o diretório padrão do nginx
-COPY index.html /usr/share/nginx/html/
+# Instalar curl para healthcheck
+RUN apk add --no-cache curl
 
-# Copiar configuração customizada do nginx se necessário
+# Copiar arquivos da aplicação
+COPY index.html /usr/share/nginx/html/
+COPY config.js /usr/share/nginx/html/
+
+# Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expor a porta 80
+# Copiar script de healthcheck
+COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Expor porta 80
 EXPOSE 80
 
-# Comando padrão para iniciar o nginx
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+# Comando para iniciar o Nginx
 CMD ["nginx", "-g", "daemon off;"]
