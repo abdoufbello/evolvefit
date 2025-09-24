@@ -26,4 +26,4 @@ services:
 
 networks:
   evolvefit:
-    external: true
+    driver: bridge
