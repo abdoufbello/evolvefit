@@ -691,49 +691,86 @@
         }
 
         async function saveStudent() {
-            const formData = {
-                id: Date.now().toString(),
-                name: document.getElementById('student-name').value,
-                goal: document.getElementById('student-goal').value,
-                age: parseInt(document.getElementById('student-age').value),
-                weight: parseFloat(document.getElementById('student-weight').value),
-                height: parseInt(document.getElementById('student-height').value),
-                injuries: document.getElementById('student-injuries').value,
-                benchmark: {
-                    squat: parseFloat(document.getElementById('benchmark-squat').value) || 0,
-                    bench: parseFloat(document.getElementById('benchmark-bench').value) || 0,
-                    legpress: parseFloat(document.getElementById('benchmark-legpress').value) || 0,
-                    deadlift: parseFloat(document.getElementById('benchmark-deadlift').value) || 0,
-                    pullups: parseInt(document.getElementById('benchmark-pullups').value) || 0,
-                    pushups: parseInt(document.getElementById('benchmark-pushups').value) || 0
-                },
-                training: {
-                    location: document.getElementById('training-location').value,
-                    modality: document.getElementById('training-modality').value
-                },
-                workoutPlan: generateWorkoutPlan(),
-                progress: []
-            };
-            
-            // Tentar gerar plano inteligente com LLM
-            const intelligentPlan = await generateIntelligentWorkout(formData);
-            if (intelligentPlan && intelligentPlan.workoutPlan) {
-                formData.workoutPlan = intelligentPlan.workoutPlan;
-                formData.llmGenerated = true;
-                formData.llmRecommendations = intelligentPlan.recommendations;
-                formData.progressionPlan = intelligentPlan.progressionPlan;
-            }
+            try {
+                // Validar campos obrigatórios
+                const name = document.getElementById('student-name').value.trim();
+                const goal = document.getElementById('student-goal').value.trim();
+                const age = parseInt(document.getElementById('student-age').value);
+                const weight = parseFloat(document.getElementById('student-weight').value);
+                const height = parseInt(document.getElementById('student-height').value);
 
-            const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
-            students.push(formData);
-            localStorage.setItem('evolvefit_students', JSON.stringify(students));
-            
-            // Sincronizar com Notion (criar novo aluno)
-            await syncWithNotion(formData, 'create');
-            
-            // Reset form e voltar para lista
-            document.getElementById('student-form').reset();
-            showView('student-list-view');
+                if (!name || !goal || !age || !weight || !height) {
+                    showNotification('Por favor, preencha todos os campos obrigatórios.', 'error');
+                    return;
+                }
+
+                // Mostrar feedback de salvamento
+                showNotification('Salvando aluno...', 'info');
+
+                const formData = {
+                    id: Date.now().toString(),
+                    name: name,
+                    goal: goal,
+                    age: age,
+                    weight: weight,
+                    height: height,
+                    injuries: document.getElementById('student-injuries').value,
+                    benchmark: {
+                        squat: parseFloat(document.getElementById('benchmark-squat').value) || 0,
+                        bench: parseFloat(document.getElementById('benchmark-bench').value) || 0,
+                        legpress: parseFloat(document.getElementById('benchmark-legpress').value) || 0,
+                        deadlift: parseFloat(document.getElementById('benchmark-deadlift').value) || 0,
+                        pullups: parseInt(document.getElementById('benchmark-pullups').value) || 0,
+                        pushups: parseInt(document.getElementById('benchmark-pushups').value) || 0
+                    },
+                    training: {
+                        location: document.getElementById('training-location').value,
+                        modality: document.getElementById('training-modality').value
+                    },
+                    workoutPlan: generateWorkoutPlan(),
+                    progress: [],
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Tentar gerar plano inteligente com LLM (não bloquear se falhar)
+                try {
+                    const intelligentPlan = await generateIntelligentWorkout(formData);
+                    if (intelligentPlan && intelligentPlan.workoutPlan) {
+                        formData.workoutPlan = intelligentPlan.workoutPlan;
+                        formData.llmGenerated = true;
+                        formData.llmRecommendations = intelligentPlan.recommendations;
+                        formData.progressionPlan = intelligentPlan.progressionPlan;
+                        console.log('✅ Plano inteligente gerado com sucesso');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Falha ao gerar plano inteligente, usando plano padrão:', error);
+                    formData.llmGenerated = false;
+                }
+
+                // Salvar no localStorage
+                const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
+                students.push(formData);
+                localStorage.setItem('evolvefit_students', JSON.stringify(students));
+                
+                // Tentar sincronizar com Notion (não bloquear se falhar)
+                try {
+                    await syncWithNotion(formData, 'create');
+                } catch (error) {
+                    console.warn('⚠️ Falha na sincronização com Notion:', error);
+                }
+                
+                // Sucesso!
+                showNotification(`Aluno ${name} cadastrado com sucesso!`, 'success');
+                
+                // Reset form e voltar para lista
+                document.getElementById('student-form').reset();
+                showView('student-list-view');
+                loadStudents(); // Recarregar lista
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar aluno:', error);
+                showNotification('Erro ao salvar aluno. Tente novamente.', 'error');
+            }
         }
 
         async function deleteStudent(studentId) {

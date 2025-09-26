@@ -5,7 +5,7 @@ const CONFIG = {
         // Webhook para chamadas do LLM (geração de treinos, análises, etc.)
         llm: 'https://n8n.leplustudio.top/webhook/evolvefit-llm',
         
-        // Webhook para sincronização com Notion (CRUD de alunos e progresso)
+        // Webhook para sincronização com Notion
         notion: 'https://n8n.leplustudio.top/webhook/evolvefit-notion'
     },
     
