@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Usuario Persistente",
+      "email": "usuario@teste.com",
+      "password_hash": "$2b$12$s2CRb342nCU8CO7DtHYmD.LGEc1PBpJxSa4HuCiAiNOJWEM5M458m",
+      "active": true,
+      "created_at": "2025-09-28T18:29:21.492Z",
+      "updated_at": "2025-09-28T18:29:21.492Z"
+    }
+  ],
+  "nextUserId": 2,
+  "lastUpdated": "2025-09-28T18:29:21.492Z"
+}

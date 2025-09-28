@@ -1,9 +1,54 @@
 const bcrypt = require('bcrypt');
+const fs = require('fs').promises;
+const path = require('path');
 
-// Armazenamento temporário em memória (para desenvolvimento sem banco)
-// Em produção, isso deve ser substituído por PostgreSQL
+// Arquivo para armazenamento persistente
+const USERS_FILE = path.join(__dirname, '..', 'data', 'users.json');
+const DATA_DIR = path.join(__dirname, '..', 'data');
+
+// Cache em memória para performance
 let users = [];
 let nextUserId = 1;
+
+// Inicializar armazenamento
+const initStorage = async () => {
+    try {
+        // Criar diretório data se não existir
+        await fs.mkdir(DATA_DIR, { recursive: true });
+        
+        // Tentar carregar dados existentes
+        try {
+            const data = await fs.readFile(USERS_FILE, 'utf8');
+            const parsedData = JSON.parse(data);
+            users = parsedData.users || [];
+            nextUserId = parsedData.nextUserId || 1;
+            console.log(`Carregados ${users.length} usuários do arquivo`);
+        } catch (error) {
+            // Arquivo não existe ou está vazio, começar com dados vazios
+            console.log('Iniciando com base de dados vazia');
+            await saveToFile();
+        }
+    } catch (error) {
+        console.error('Erro ao inicializar armazenamento:', error);
+    }
+};
+
+// Salvar dados no arquivo
+const saveToFile = async () => {
+    try {
+        const data = {
+            users,
+            nextUserId,
+            lastUpdated: new Date().toISOString()
+        };
+        await fs.writeFile(USERS_FILE, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Erro ao salvar dados:', error);
+    }
+};
+
+// Inicializar na primeira execução
+initStorage();
 
 class User {
     constructor(data) {
@@ -43,6 +88,10 @@ class User {
             };
 
             users.push(newUser);
+            
+            // Salvar no arquivo
+            await saveToFile();
+            
             return new User(newUser);
 
         } catch (error) {
@@ -102,6 +151,9 @@ class User {
                 password_hash: hashedPassword,
                 updated_at: new Date().toISOString()
             };
+
+            // Salvar no arquivo
+            await saveToFile();
 
             // Atualizar instância atual
             Object.assign(this, users[userIndex]);
@@ -165,6 +217,9 @@ class User {
                 active: false,
                 updated_at: new Date().toISOString()
             };
+
+            // Salvar no arquivo
+            await saveToFile();
 
             // Atualizar instância atual
             Object.assign(this, users[userIndex]);

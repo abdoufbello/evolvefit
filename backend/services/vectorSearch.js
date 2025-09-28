@@ -244,9 +244,6 @@ class VectorSearchService {
         console.log('⚠️ Embedding update skipped (compatibility mode)');
         return 0;
     }
-}
-
-module.exports = new VectorSearchService();
 
     /**
      * Criar texto descritivo do workout para embedding
