@@ -1,0 +1,21 @@
+# Dockerfile minimalista para Portainer
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar apenas os arquivos necessários
+COPY package*.json ./
+COPY server.js ./
+COPY config/ ./config/
+COPY middleware/ ./middleware/
+COPY models/ ./models/
+COPY routes/ ./routes/
+COPY services/ ./services/
+COPY utils/ ./utils/
+
+# Instalar apenas dependências básicas
+RUN npm install --production --no-optional --ignore-scripts
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
