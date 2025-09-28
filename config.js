@@ -3,14 +3,23 @@ const CONFIG = {
     // URLs dos webhooks n8n
     webhooks: {
         // Webhook para chamadas do LLM (geração de treinos, análises, etc.)
-        llm: 'https://n8n.leplustudio.top/webhook/evolvefit-llm',
-        
-        // Webhook para sincronização com Notion
-        notion: 'https://n8n.leplustudio.top/webhook/evolvefit-notion'
+        llm: 'https://n8n.leplustudio.top/webhook/evolvefit-llm'
+    },
+    
+    // Configurações da API Backend
+    api: {
+        baseUrl: window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://evolvefit.leplustudio.top',
+        endpoints: {
+            auth: '/api/auth',
+            users: '/api/users',
+            workouts: '/api/workouts',
+            progress: '/api/progress',
+            nutrition: '/api/nutrition'
+        }
     },
     
     // Configurações de timeout e retry
-    api: {
+    request: {
         timeout: 30000, // 30 segundos
         retryAttempts: 3,
         retryDelay: 1000 // 1 segundo
@@ -80,33 +89,6 @@ const CONFIG = {
         }
     },
     
-    // Configurações do Notion
-    notion: {
-        // Estrutura dos dados que serão enviados para o Notion
-        studentSchema: {
-            name: 'title',
-            goal: 'select',
-            age: 'number',
-            weight: 'number',
-            height: 'number',
-            injuries: 'rich_text',
-            trainingLocation: 'select',
-            trainingModality: 'select',
-            createdAt: 'date',
-            lastUpdate: 'date'
-        },
-        
-        progressSchema: {
-            studentName: 'relation',
-            date: 'date',
-            exercise: 'select',
-            weight: 'number',
-            reps: 'number',
-            week: 'number',
-            day: 'number'
-        }
-    },
-    
     // Configurações de desenvolvimento/produção
     environment: {
         isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
@@ -123,10 +105,11 @@ const CONFIG = {
             analyzing: 'Analisando seu progresso...',
             analysisComplete: 'Análise de progresso concluída!'
         },
-        notion: {
-            syncing: 'Sincronizando com Notion...',
-            success: 'Dados sincronizados com sucesso!',
-            error: 'Erro na sincronização. Dados salvos localmente.',
+        database: {
+            saving: 'Salvando dados...',
+            success: 'Dados salvos com sucesso!',
+            error: 'Erro ao salvar dados. Tente novamente.',
+            loading: 'Carregando dados...',
             offline: 'Modo offline - dados serão sincronizados quando possível'
         }
     }
@@ -136,14 +119,19 @@ const CONFIG = {
 function validateConfig() {
     const requiredFields = [
         'webhooks.llm',
-        'webhooks.notion'
+        'api.baseUrl'
     ];
     
     for (const field of requiredFields) {
-        const value = field.split('.').reduce((obj, key) => obj?.[key], CONFIG);
-        if (!value) {
-            console.warn(`Configuração obrigatória ausente: ${field}`);
-            return false;
+        const keys = field.split('.');
+        let current = CONFIG;
+        
+        for (const key of keys) {
+            if (!current[key]) {
+                console.error(`❌ Campo obrigatório não encontrado: ${field}`);
+                return false;
+            }
+            current = current[key];
         }
     }
     
@@ -156,8 +144,11 @@ function getEnvironmentConfig() {
         return {
             ...CONFIG,
             webhooks: {
-                llm: CONFIG.webhooks.llm.replace('n8n.leplustudio.top', 'localhost:5678'),
-                notion: CONFIG.webhooks.notion.replace('n8n.leplustudio.top', 'localhost:5678')
+                llm: CONFIG.webhooks.llm.replace('n8n.leplustudio.top', 'localhost:5678')
+            },
+            api: {
+                ...CONFIG.api,
+                baseUrl: 'http://localhost:3000'
             }
         };
     }
@@ -176,6 +167,6 @@ if (CONFIG.environment.enableLogs) {
         environment: CONFIG.environment.isDevelopment ? 'development' : 'production',
         webhooksConfigured: validateConfig(),
         llmEndpoint: CONFIG.webhooks.llm,
-        notionEndpoint: CONFIG.webhooks.notion
+        apiBaseUrl: CONFIG.api.baseUrl
     });
 }

@@ -1,6 +1,70 @@
 version: '3.8'
 
 services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: evolvefit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evolvefit
+      POSTGRES_USER: evolvefit
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-evolvefit_secure_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolvefit -d evolvefit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - evolvefit
+
+  # Backend API
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: evolvefit-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: evolvefit
+      DB_USER: evolvefit
+      DB_PASSWORD: ${DB_PASSWORD:-evolvefit_secure_password}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      N8N_LLM_WEBHOOK: ${N8N_LLM_WEBHOOK:-https://n8n.evolvefit.com/webhook/evolvefit-llm}
+      CORS_ORIGIN: https://evolvefit.leplustudio.top
+    expose:
+      - "3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.evolvefit-api.rule=Host(`evolvefit.leplustudio.top`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.evolvefit-api.entrypoints=websecure"
+      - "traefik.http.routers.evolvefit-api.tls=true"
+      - "traefik.http.routers.evolvefit-api.tls.certresolver=leresolver"
+      - "traefik.http.services.evolvefit-api.loadbalancer.server.port=3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - evolvefit
+
+  # Frontend (existing)
   evolvefit:
     build: .
     container_name: evolvefit-app
@@ -23,6 +87,10 @@ services:
       start_period: 10s
     networks:
       - evolvefit
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   evolvefit:

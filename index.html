@@ -111,7 +111,7 @@
         <div class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <div class="logo font-poppins">E↑</div>
+                    <div class="logo font-poppins">EvolveFit</div>
                     <h1 class="text-2xl font-poppins font-bold text-primary">EvolveFit</h1>
                 </div>
                 <nav class="hidden md:flex space-x-6">
@@ -125,13 +125,92 @@
     <!-- Main Content -->
     <main class="container mx-auto px-6 py-8">
         
+        <!-- Tela de Login -->
+        <div id="login-view" class="view active">
+            <div class="max-w-md mx-auto mt-16">
+                <div class="bg-secondary p-8 rounded-lg shadow-xl">
+                    <div class="text-center mb-8">
+                        <div class="logo font-poppins text-4xl mb-2">EvolveFit</div>
+                        <h2 class="text-2xl font-poppins font-bold text-primary">EvolveFit</h2>
+                        <p class="text-secondary mt-2">Entre na sua conta</p>
+                    </div>
+                    
+                    <form id="login-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-2">Email</label>
+                            <input type="email" id="login-email" class="input-field w-full px-4 py-3 rounded-lg" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-2">Senha</label>
+                            <input type="password" id="login-password" class="input-field w-full px-4 py-3 rounded-lg" required>
+                        </div>
+                        <button type="submit" class="btn-primary w-full py-3 rounded-lg">
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-6">
+                        <p class="text-secondary">Não tem uma conta? 
+                            <button onclick="showView('register-view')" class="accent-primary hover:underline">
+                                Cadastre-se
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela de Registro -->
+        <div id="register-view" class="view">
+            <div class="max-w-md mx-auto mt-16">
+                <div class="bg-secondary p-8 rounded-lg shadow-xl">
+                    <div class="text-center mb-8">
+                        <div class="logo font-poppins text-4xl mb-2">EvolveFit</div>
+                        <h2 class="text-2xl font-poppins font-bold text-primary">EvolveFit</h2>
+                        <p class="text-secondary mt-2">Crie sua conta</p>
+                    </div>
+                    
+                    <form id="register-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-2">Nome Completo</label>
+                            <input type="text" id="register-name" class="input-field w-full px-4 py-3 rounded-lg" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-2">Email</label>
+                            <input type="email" id="register-email" class="input-field w-full px-4 py-3 rounded-lg" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-secondary mb-2">Senha</label>
+                            <input type="password" id="register-password" class="input-field w-full px-4 py-3 rounded-lg" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn-primary w-full py-3 rounded-lg">
+                            Criar Conta
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-6">
+                        <p class="text-secondary">Já tem uma conta? 
+                            <button onclick="showView('login-view')" class="accent-primary hover:underline">
+                                Faça login
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Tela 1: Lista de Alunos -->
-        <div id="student-list-view" class="view active">
+        <div id="student-list-view" class="view">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-3xl font-poppins font-bold text-primary">Meus Alunos</h2>
-                <button onclick="showView('student-form-view')" class="btn-primary px-6 py-3 rounded-lg">
-                    + Adicionar Novo Aluno
-                </button>
+                <div class="flex space-x-4">
+                    <button onclick="showView('student-form-view')" class="btn-primary px-6 py-3 rounded-lg">
+                        + Adicionar Novo Aluno
+                    </button>
+                    <button onclick="logout()" class="btn-secondary px-6 py-3 rounded-lg">
+                        Sair
+                    </button>
+                </div>
             </div>
             
             <div id="students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -321,6 +400,170 @@
         let currentStudent = null;
         let currentChart = null;
         let syncInProgress = false;
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        
+        // Verificar autenticação ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
+        
+        // Funções de autenticação
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showView('login-view');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    authToken = token;
+                    showView('student-list-view');
+                    loadStudents();
+                } else {
+                    localStorage.removeItem('authToken');
+                    showView('login-view');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar autenticação:', error);
+                localStorage.removeItem('authToken');
+                showView('login-view');
+            }
+        }
+        
+        // Função de login
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('authToken', data.accessToken);
+                    currentUser = data.user;
+                    authToken = data.accessToken;
+                    showNotification('Login realizado com sucesso!', 'success');
+                    showView('student-list-view');
+                    loadStudents();
+                } else {
+                    showNotification(data.error || 'Erro no login', 'error');
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showNotification('Erro de conexão', 'error');
+            }
+        });
+        
+        // Função de registro
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('authToken', data.accessToken);
+                    currentUser = data.user;
+                    authToken = data.accessToken;
+                    showNotification('Conta criada com sucesso!', 'success');
+                    showView('student-list-view');
+                    loadStudents();
+                } else {
+                    showNotification(data.error || 'Erro no registro', 'error');
+                }
+            } catch (error) {
+                console.error('Erro no registro:', error);
+                showNotification('Erro de conexão', 'error');
+            }
+        });
+        
+        // Função de logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            currentUser = null;
+            authToken = null;
+            showView('login-view');
+            showNotification('Logout realizado com sucesso!', 'success');
+        }
+        
+        // Função para fazer requisições autenticadas
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showView('login-view');
+                throw new Error('Token não encontrado');
+            }
+            
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...options.headers
+            };
+            
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+            
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                showView('login-view');
+                throw new Error('Token expirado');
+            }
+            
+            return response;
+        }
+        
+        // Função para mostrar notificações
+        function showNotification(message, type = 'info') {
+            // Criar elemento de notificação
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-600' : 
+                type === 'error' ? 'bg-red-600' : 
+                'bg-blue-600'
+            } text-white`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
         
         // Funções de integração com n8n aprimoradas
         async function callLLMWebhook(prompt, studentData, type = 'general') {
@@ -373,30 +616,44 @@
             }
         }
         
-        async function syncWithNotion(studentData, action = 'create') {
+        // Função para salvar dados no PostgreSQL via API
+        async function saveToDatabase(studentData, action = 'create') {
             if (syncInProgress) return;
             if (!CONFIG || !validateConfig()) {
-                console.error('Configuração de webhooks não encontrada ou inválida');
+                console.error('Configuração da API não encontrada ou inválida');
                 return null;
             }
             
             syncInProgress = true;
-            showNotification(CONFIG.messages.notion.syncing, 'info');
+            showNotification(CONFIG.messages.database.saving, 'info');
             
             try {
-                const payload = {
-                    action: action,
-                    data: transformDataForNotion(studentData, action),
-                    timestamp: new Date().toISOString(),
-                    schema: action === 'progress' ? CONFIG.notion.progressSchema : CONFIG.notion.studentSchema
-                };
+                let endpoint = '';
+                let method = 'POST';
                 
-                const response = await fetchWithRetry(CONFIG.webhooks.notion, {
-                    method: 'POST',
+                switch (action) {
+                    case 'create':
+                        endpoint = CONFIG.api.endpoints.users;
+                        break;
+                    case 'update':
+                        endpoint = `${CONFIG.api.endpoints.users}/${studentData.id}`;
+                        method = 'PUT';
+                        break;
+                    case 'delete':
+                        endpoint = `${CONFIG.api.endpoints.users}/${studentData.id}`;
+                        method = 'DELETE';
+                        break;
+                    case 'progress':
+                        endpoint = CONFIG.api.endpoints.progress;
+                        break;
+                }
+                
+                const response = await fetchWithRetry(`${CONFIG.api.baseUrl}${endpoint}`, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(payload)
+                    body: method !== 'DELETE' ? JSON.stringify(studentData) : undefined
                 });
                 
                 if (!response.ok) {
@@ -406,15 +663,15 @@
                 const result = await response.json();
                 
                 if (CONFIG.environment.enableLogs) {
-                    console.log('✅ Notion Sync:', result);
+                    console.log('✅ Database Save:', result);
                 }
                 
-                showNotification(CONFIG.messages.notion.success, 'success');
+                showNotification(CONFIG.messages.database.success, 'success');
                 return result;
                 
             } catch (error) {
-                console.error('❌ Erro ao sincronizar com Notion:', error);
-                showNotification(CONFIG.messages.notion.error, 'warning');
+                console.error('❌ Erro ao salvar no banco de dados:', error);
+                showNotification(CONFIG.messages.database.error, 'warning');
                 return null;
             } finally {
                 syncInProgress = false;
@@ -439,36 +696,10 @@
                 } catch (error) {
                     if (i === attempts - 1) throw error;
                     
-                    console.warn(`Tentativa ${i + 1} falhou, tentando novamente em ${CONFIG.api.retryDelay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, CONFIG.api.retryDelay));
+                    console.warn(`Tentativa ${i + 1} falhou, tentando novamente em ${CONFIG.request.retryDelay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, CONFIG.request.retryDelay));
                 }
             }
-        }
-        
-        // Função para transformar dados para o formato do Notion
-        function transformDataForNotion(data, action) {
-            if (action === 'progress') {
-                return {
-                    studentName: data.name,
-                    date: new Date().toISOString().split('T')[0],
-                    exercises: data.progress || [],
-                    lastUpdate: new Date().toISOString()
-                };
-            }
-            
-            return {
-                name: data.name,
-                goal: data.goal,
-                age: data.age,
-                weight: data.weight,
-                height: data.height,
-                injuries: data.injuries || '',
-                trainingLocation: data.training?.location || '',
-                trainingModality: data.training?.modality || '',
-                createdAt: new Date().toISOString(),
-                lastUpdate: new Date().toISOString(),
-                benchmark: data.benchmark || {}
-            };
         }
         
         // Sistema de notificações
@@ -540,8 +771,8 @@
             document.body.appendChild(modal);
         }
         
-        // Função para sincronização em lote (útil para recuperação de dados)
-        async function batchSyncWithNotion() {
+        // Função para sincronização em lote com PostgreSQL
+        async function batchSyncWithDatabase() {
             const students = JSON.parse(localStorage.getItem('evolvefit_students') || '[]');
             
             if (students.length === 0) {
@@ -556,7 +787,7 @@
             
             for (const student of students) {
                 try {
-                    await syncWithNotion(student, 'create');
+                    await saveToDatabase(student, 'create');
                     successCount++;
                 } catch (error) {
                     errorCount++;
@@ -752,11 +983,11 @@
                 students.push(formData);
                 localStorage.setItem('evolvefit_students', JSON.stringify(students));
                 
-                // Tentar sincronizar com Notion (não bloquear se falhar)
+                // Tentar salvar no banco de dados (não bloquear se falhar)
                 try {
-                    await syncWithNotion(formData, 'create');
+                    await saveToDatabase(formData, 'create');
                 } catch (error) {
-                    console.warn('⚠️ Falha na sincronização com Notion:', error);
+                    console.warn('⚠️ Falha ao salvar no banco de dados:', error);
                 }
                 
                 // Sucesso!
@@ -780,9 +1011,9 @@
                 const updatedStudents = students.filter(student => student.id !== studentId);
                 localStorage.setItem('evolvefit_students', JSON.stringify(updatedStudents));
                 
-                // Sincronizar exclusão com Notion
+                // Sincronizar exclusão com banco de dados
                 if (studentToDelete) {
-                    await syncWithNotion({...studentToDelete, id: studentId}, 'delete');
+                    await saveToDatabase({...studentToDelete, id: studentId}, 'delete');
                 }
                 
                 loadStudents();
@@ -985,8 +1216,8 @@
                 students[studentIndex] = currentStudent;
                 localStorage.setItem('evolvefit_students', JSON.stringify(students));
                 
-                // Sincronizar progresso com Notion
-                await syncWithNotion(currentStudent, 'progress');
+                // Sincronizar progresso com banco de dados
+                await saveToDatabase(currentStudent, 'progress');
             }
             
             alert('Treino do dia salvo com sucesso!');
