@@ -1,0 +1,37 @@
+# Dockerfile simplificado para Portainer
+FROM node:18-alpine
+
+# Instalar apenas dependências essenciais
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    postgresql-client
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+
+# Instalar dependências com configurações simples
+RUN npm config set python /usr/bin/python3 && \
+    npm install --only=production && \
+    npm cache clean --force
+
+# Copiar código da aplicação
+COPY . .
+
+# Criar usuário não-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+# Mudar para usuário não-root
+USER nodejs
+
+# Expor porta
+EXPOSE 3000
+
+# Comando de inicialização
+CMD ["npm", "start"]

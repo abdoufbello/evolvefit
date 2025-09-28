@@ -1,43 +1,11 @@
 const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
-const Redis = require('redis');
 
-// Configuração do Redis (fallback para memória se não disponível)
-let redisClient;
-let useRedis = false;
+// Usando apenas MemoryStore para simplicidade e compatibilidade
+console.log('⚠️ Using memory store for rate limiting (Redis store disabled for compatibility)');
 
-try {
-    redisClient = Redis.createClient({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: process.env.REDIS_PORT || 6379,
-        password: process.env.REDIS_PASSWORD,
-        retryDelayOnFailover: 100,
-        enableOfflineQueue: false
-    });
-
-    redisClient.on('connect', () => {
-        console.log('✅ Redis connected for rate limiting');
-        useRedis = true;
-    });
-
-    redisClient.on('error', (err) => {
-        console.log('⚠️ Redis not available, using memory store for rate limiting:', err.message);
-        useRedis = false;
-    });
-} catch (error) {
-    console.log('⚠️ Redis not configured, using memory store for rate limiting');
-    useRedis = false;
-}
-
-// Store factory - Redis ou memória
+// Store factory - apenas memória para compatibilidade
 const createStore = () => {
-    if (useRedis && redisClient) {
-        return new RedisStore({
-            client: redisClient,
-            prefix: 'rl:evolvefit:'
-        });
-    }
-    return undefined; // Usa MemoryStore padrão
+    return undefined; // Usa MemoryStore padrão do express-rate-limit
 };
 
 // Rate limiter básico para endpoints gerais

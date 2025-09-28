@@ -1,52 +1,45 @@
-# Use Node.js 18 Alpine for smaller image size
+# Dockerfile otimizado para Portainer
 FROM node:18-alpine
 
-# Set working directory
+# Definir diretório de trabalho
 WORKDIR /app
 
-# Install system dependencies for native modules and build tools
+# Instalar dependências do sistema necessárias
 RUN apk add --no-cache \
     python3 \
-    py3-pip \
     make \
     g++ \
-    gcc \
-    musl-dev \
     postgresql-client \
-    postgresql-dev \
-    libc6-compat \
-    curl \
     wget
 
-# Set Python path for node-gyp
+# Configurar Python para node-gyp
 ENV PYTHON=/usr/bin/python3
 
-# Copy package files first for better caching
+# Copiar arquivos de dependências primeiro (para cache)
 COPY package*.json ./
 
-# Install dependencies with verbose logging and proper error handling
-RUN npm config set unsafe-perm true && \
-    npm config set python /usr/bin/python3 && \
-    npm ci --only=production --verbose && \
+# Instalar dependências com configurações otimizadas
+RUN npm config set python /usr/bin/python3 && \
+    npm install --only=production && \
     npm cache clean --force
 
-# Copy application code
+# Copiar código da aplicação
 COPY . .
 
-# Create non-root user for security
+# Criar usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
 
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
+# Mudar para usuário não-root
 USER nodejs
 
-# Expose port
+# Expor porta da aplicação
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node healthcheck.js
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start the application
+# Comando de inicialização
 CMD ["npm", "start"]

@@ -6,37 +6,247 @@ class VectorSearchService {
         this.openaiApiKey = process.env.OPENAI_API_KEY;
         this.embeddingModel = 'text-embedding-3-small';
         this.embeddingDimension = 1536;
+        console.log('⚠️ Vector search service initialized without pgvector (compatibility mode)');
     }
 
     /**
-     * Gerar embedding usando OpenAI
+     * Gerar embedding usando OpenAI (mockado para compatibilidade)
      */
     async generateEmbedding(text) {
-        if (!this.openaiApiKey) {
-            console.warn('OpenAI API key não configurada, usando embedding mockado');
-            // Retorna um vetor mockado para desenvolvimento
-            return Array(this.embeddingDimension).fill(0).map(() => Math.random() * 2 - 1);
+        console.log('⚠️ Using mock embedding for compatibility');
+        // Retorna um vetor mockado para desenvolvimento/compatibilidade
+        return Array(this.embeddingDimension).fill(0).map(() => Math.random() * 2 - 1);
+    }
+
+    /**
+     * Criar texto descritivo do workout para embedding
+     */
+    createWorkoutDescription(workout) {
+        const parts = [
+            workout.title || '',
+            workout.description || '',
+            workout.workout_type || '',
+            workout.difficulty_level || '',
+            `duração ${workout.estimated_duration || 0} minutos`
+        ];
+
+        // Adicionar descrição dos exercícios
+        if (workout.exercises && Array.isArray(workout.exercises)) {
+            const exerciseDescriptions = workout.exercises.map(ex => {
+                return `${ex.name || ''} ${ex.muscle_groups ? ex.muscle_groups.join(' ') : ''} ${ex.equipment || ''}`;
+            }).join(' ');
+            parts.push(exerciseDescriptions);
         }
 
-        try {
-            const response = await axios.post('https://api.openai.com/v1/embeddings', {
-                input: text,
-                model: this.embeddingModel
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${this.openaiApiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000
-            });
+        return parts.filter(p => p.trim()).join(' ').toLowerCase();
+    }
 
-            return response.data.data[0].embedding;
+    /**
+     * Salvar workout sem embedding (compatibilidade)
+     */
+    async saveWorkoutWithEmbedding(workoutData) {
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+
+            // Inserir workout sem embedding para compatibilidade
+            const insertQuery = `
+                INSERT INTO workouts (
+                    user_id, title, description, workout_type, difficulty_level,
+                    estimated_duration, exercises, ai_generated, llm_prompt, 
+                    llm_response
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                RETURNING id, created_at
+            `;
+
+            const values = [
+                workoutData.user_id,
+                workoutData.title,
+                workoutData.description,
+                workoutData.workout_type,
+                workoutData.difficulty_level,
+                workoutData.estimated_duration,
+                JSON.stringify(workoutData.exercises || []),
+                workoutData.ai_generated || false,
+                workoutData.llm_prompt || null,
+                workoutData.llm_response ? JSON.stringify(workoutData.llm_response) : null
+            ];
+
+            const result = await client.query(insertQuery, values);
+            await client.query('COMMIT');
+
+            return {
+                id: result.rows[0].id,
+                created_at: result.rows[0].created_at,
+                embedding_generated: false
+            };
+
         } catch (error) {
-            console.error('Erro ao gerar embedding:', error.message);
-            // Fallback para embedding mockado
-            return Array(this.embeddingDimension).fill(0).map(() => Math.random() * 2 - 1);
+            await client.query('ROLLBACK');
+            console.error('Erro ao salvar workout:', error);
+            throw error;
+        } finally {
+            client.release();
         }
     }
+
+    /**
+     * Buscar workouts similares usando busca por texto (fallback)
+     */
+    async searchSimilarWorkouts(query, userId = null, limit = 10, threshold = 0.7) {
+        try {
+            console.log('⚠️ Using text-based search instead of vector search');
+            
+            // Busca por texto simples como fallback
+            let sqlQuery = `
+                SELECT 
+                    id,
+                    title,
+                    description,
+                    workout_type,
+                    difficulty_level,
+                    estimated_duration,
+                    exercises,
+                    ai_generated,
+                    created_at,
+                    0.5 as similarity_score
+                FROM workouts
+                WHERE (
+                    LOWER(title) LIKE LOWER($1) OR 
+                    LOWER(description) LIKE LOWER($1) OR
+                    LOWER(workout_type) LIKE LOWER($1)
+                )
+            `;
+
+            const params = [`%${query}%`];
+            let paramIndex = 2;
+
+            // Filtrar por usuário se especificado
+            if (userId) {
+                sqlQuery += ` AND user_id = $${paramIndex}`;
+                params.push(userId);
+                paramIndex++;
+            }
+
+            sqlQuery += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
+            params.push(limit);
+
+            const result = await pool.query(sqlQuery, params);
+
+            return result.rows.map(row => ({
+                ...row,
+                exercises: typeof row.exercises === 'string' ? JSON.parse(row.exercises) : row.exercises,
+                similarity_score: parseFloat(row.similarity_score)
+            }));
+
+        } catch (error) {
+            console.error('Erro na busca de workouts similares:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Buscar workouts por filtros
+     */
+    async searchWorkoutsByFilters(filters = {}, userId = null, limit = 20) {
+        try {
+            let sqlQuery = `
+                SELECT 
+                    id, title, description, workout_type, difficulty_level,
+                    estimated_duration, exercises, ai_generated, created_at
+                FROM workouts
+                WHERE 1=1
+            `;
+
+            const params = [];
+            let paramIndex = 1;
+
+            // Filtros
+            if (filters.workout_type) {
+                sqlQuery += ` AND workout_type = $${paramIndex}`;
+                params.push(filters.workout_type);
+                paramIndex++;
+            }
+
+            if (filters.difficulty_level) {
+                sqlQuery += ` AND difficulty_level = $${paramIndex}`;
+                params.push(filters.difficulty_level);
+                paramIndex++;
+            }
+
+            if (filters.max_duration) {
+                sqlQuery += ` AND estimated_duration <= $${paramIndex}`;
+                params.push(filters.max_duration);
+                paramIndex++;
+            }
+
+            if (userId) {
+                sqlQuery += ` AND user_id = $${paramIndex}`;
+                params.push(userId);
+                paramIndex++;
+            }
+
+            sqlQuery += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
+            params.push(limit);
+
+            const result = await pool.query(sqlQuery, params);
+
+            return result.rows.map(row => ({
+                ...row,
+                exercises: typeof row.exercises === 'string' ? JSON.parse(row.exercises) : row.exercises
+            }));
+
+        } catch (error) {
+            console.error('Erro na busca por filtros:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Recomendar workouts baseado no histórico do usuário
+     */
+    async recommendWorkouts(userId, limit = 5) {
+        try {
+            // Buscar workouts populares como recomendação simples
+            const sqlQuery = `
+                SELECT 
+                    w.id, w.title, w.description, w.workout_type, 
+                    w.difficulty_level, w.estimated_duration, w.exercises,
+                    COUNT(ws.id) as usage_count
+                FROM workouts w
+                LEFT JOIN workout_sessions ws ON w.id = ws.workout_id
+                WHERE w.user_id != $1 OR w.user_id IS NULL
+                GROUP BY w.id, w.title, w.description, w.workout_type, 
+                         w.difficulty_level, w.estimated_duration, w.exercises
+                ORDER BY usage_count DESC, w.created_at DESC
+                LIMIT $2
+            `;
+
+            const result = await pool.query(sqlQuery, [userId, limit]);
+
+            return result.rows.map(row => ({
+                ...row,
+                exercises: typeof row.exercises === 'string' ? JSON.parse(row.exercises) : row.exercises,
+                recommendation_score: 0.8 - (Math.random() * 0.3) // Score mockado
+            }));
+
+        } catch (error) {
+            console.error('Erro ao recomendar workouts:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Método placeholder para compatibilidade
+     */
+    async updateExistingEmbeddings() {
+        console.log('⚠️ Embedding update skipped (compatibility mode)');
+        return 0;
+    }
+}
+
+module.exports = new VectorSearchService();
 
     /**
      * Criar texto descritivo do workout para embedding

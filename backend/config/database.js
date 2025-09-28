@@ -17,7 +17,7 @@ const dbConfig = {
 // Create connection pool
 const pool = new Pool(dbConfig);
 
-// Test connection and setup pgvector extension
+// Test connection without pgvector for compatibility
 const initializeDatabase = async () => {
   try {
     const client = await pool.connect();
@@ -26,13 +26,8 @@ const initializeDatabase = async () => {
     const result = await client.query('SELECT NOW()');
     console.log('✅ Database connected successfully at:', result.rows[0].now);
     
-    // Enable pgvector extension
-    try {
-      await client.query('CREATE EXTENSION IF NOT EXISTS vector');
-      console.log('✅ pgvector extension enabled');
-    } catch (extensionError) {
-      console.warn('⚠️  pgvector extension not available:', extensionError.message);
-    }
+    // Skip pgvector extension for compatibility
+    console.log('⚠️ pgvector extension disabled for compatibility');
     
     client.release();
     return true;
