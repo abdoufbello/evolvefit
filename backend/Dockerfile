@@ -12,6 +12,9 @@ RUN npm install --production --no-optional --ignore-scripts
 # Copiar código da aplicação
 COPY . .
 
+# Criar diretório para dados persistentes
+RUN mkdir -p /app/data
+
 EXPOSE 3000
 
 CMD ["node", "server.js"]
