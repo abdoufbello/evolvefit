@@ -43,6 +43,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       N8N_LLM_WEBHOOK: ${N8N_LLM_WEBHOOK:-https://n8n.evolvefit.com/webhook/evolvefit-llm}
       CORS_ORIGIN: https://evolvefit.leplustudio.top
+      REDIS_URL: redis://redis:6379
     expose:
       - "3000"
     labels:
@@ -55,6 +56,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
@@ -63,6 +66,25 @@ services:
       start_period: 40s
     networks:
       - evolvefit
+
+  # Redis for caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: evolvefit-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - evolvefit-network
 
   # Frontend (existing)
   evolvefit:
@@ -91,7 +113,11 @@ services:
 volumes:
   postgres_data:
     driver: local
+  redis_data:
+    driver: local
 
 networks:
+  evolvefit-network:
+    driver: bridge
   evolvefit:
     external: true

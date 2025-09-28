@@ -4,18 +4,31 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for native modules
+# Install system dependencies for native modules and build tools
 RUN apk add --no-cache \
     python3 \
+    py3-pip \
     make \
     g++ \
-    postgresql-client
+    gcc \
+    musl-dev \
+    postgresql-client \
+    postgresql-dev \
+    libc6-compat \
+    curl \
+    wget
 
-# Copy package files
+# Set Python path for node-gyp
+ENV PYTHON=/usr/bin/python3
+
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies with verbose logging and proper error handling
+RUN npm config set unsafe-perm true && \
+    npm config set python /usr/bin/python3 && \
+    npm ci --only=production --verbose && \
+    npm cache clean --force
 
 # Copy application code
 COPY . .
